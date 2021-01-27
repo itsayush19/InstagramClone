@@ -25,13 +25,20 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import com.parse.ParseException;
-import com.parse.ParseFile;
-import com.parse.ParseObject;
-import com.parse.ParseUser;
-import com.parse.SaveCallback;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.UploadTask;
+
 
 import java.io.ByteArrayOutputStream;
+import java.net.URI;
+import java.util.HashMap;
+import java.util.UUID;
 
 
 public class SharePictureTab extends Fragment implements View.OnClickListener{
@@ -39,7 +46,10 @@ public class SharePictureTab extends Fragment implements View.OnClickListener{
    private ImageView shareImage;
    private EditText caption;
    private Button btnShareImage;
-    Bitmap receivedImageBitmap;
+   private FirebaseAuth mAuth;
+   private Bitmap receivedImageBitmap;
+   private String imagIdentifier;
+   private String imageLink;
 
     public SharePictureTab() {
         // Required empty public constructor
@@ -55,7 +65,7 @@ public class SharePictureTab extends Fragment implements View.OnClickListener{
         shareImage=view.findViewById(R.id.shareImage);
         caption=view.findViewById(R.id.caption);
         btnShareImage=view.findViewById(R.id.btnShare);
-
+        mAuth=FirebaseAuth.getInstance();
         shareImage.setOnClickListener(SharePictureTab.this);
         btnShareImage.setOnClickListener(SharePictureTab.this);
 
@@ -96,6 +106,41 @@ public class SharePictureTab extends Fragment implements View.OnClickListener{
                         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                         receivedImageBitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
                         byte[] bytes = byteArrayOutputStream.toByteArray();
+                        imagIdentifier= UUID.randomUUID()+".png";
+                        UploadTask uploadTask= FirebaseStorage.getInstance().getReference().child("my_images").child(imagIdentifier).putBytes(bytes);
+                        final ProgressDialog dialog = new ProgressDialog(getContext());
+                        dialog.setMessage("Loading...");
+                        dialog.show();
+
+                        uploadTask.addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                Toast.makeText(getContext(),"failed",Toast.LENGTH_SHORT).show();
+                            }
+                        }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+
+                                taskSnapshot.getMetadata().getReference().getDownloadUrl().addOnCompleteListener(new OnCompleteListener<Uri>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Uri> task) {
+                                        if(task.isSuccessful()){
+                                            imageLink=task.getResult().toString();
+                                        }
+
+                                    }
+                                });
+                                HashMap<String,String> dataMap=new HashMap<>();
+                                dataMap.put("imageLink", imageLink);
+                                dataMap.put("caption",caption.getText().toString());
+                                FirebaseDatabase.getInstance().getReference().child("users").child(mAuth.getCurrentUser().getUid()).child("posts").push().setValue(dataMap);
+                                Toast.makeText(getContext(),"DONE!!",Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                        dialog.dismiss();
+
+
+                        /*
                         ParseFile parseFile = new ParseFile("img.png", bytes);
                         ParseObject parseObject = new ParseObject("Photo");
                         parseObject.put("picture", parseFile);
@@ -116,7 +161,7 @@ public class SharePictureTab extends Fragment implements View.OnClickListener{
                                 dialog.dismiss();
                             }
                         });
-
+                        */
 
                     }
 
@@ -158,7 +203,7 @@ public class SharePictureTab extends Fragment implements View.OnClickListener{
             if (resultCode == Activity.RESULT_OK) {
 
                 //Do something with your captured image.
-                try {
+                /*try {
                     Uri selectedImage = data.getData();
                     String[] filePathColumn = { MediaStore.Images.Media.DATA };
                     Cursor cursor = getActivity().getContentResolver().query(selectedImage,
@@ -173,6 +218,14 @@ public class SharePictureTab extends Fragment implements View.OnClickListener{
 
                 } catch (Exception e) {
 
+                    e.printStackTrace();
+                }*/
+                Uri chosenImage=data.getData();
+                try{
+                    receivedImageBitmap=MediaStore.Images.Media.getBitmap(this.getContext().getContentResolver(),chosenImage);
+                    shareImage.setImageBitmap(receivedImageBitmap);
+                }
+                catch (Exception e){
                     e.printStackTrace();
                 }
 

@@ -1,10 +1,11 @@
 package com.example.instagramclone;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
+
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -12,13 +13,16 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.parse.LogInCallback;
-import com.parse.ParseException;
-import com.parse.ParseUser;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+
 
 public class LoginActivity extends AppCompatActivity implements View.OnClickListener {
-    EditText edtEmail,edtPword;
-    Button btnLogin,btnSignup;
+    private EditText edtEmail,edtPword;
+    private Button btnLogin,btnSignup;
+    private FirebaseAuth mAuth;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -27,7 +31,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         edtPword=findViewById(R.id.pwlogin);
         btnLogin=findViewById(R.id.lgbtn);
         btnSignup=findViewById(R.id.sulgn);
-
+        mAuth=FirebaseAuth.getInstance();
         edtPword.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -41,7 +45,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         btnLogin.setOnClickListener(this);
         btnSignup.setOnClickListener(this);
 
-        if(ParseUser.getCurrentUser()!=null){
+        if(mAuth.getCurrentUser()!=null){
             transitionToSocialMedia();
         }
     }
@@ -54,7 +58,8 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                     Toast.makeText(LoginActivity.this,"Email and Password are required",Toast.LENGTH_SHORT).show();
                 }
                 else
-                {ParseUser.logInInBackground(edtEmail.getText().toString(), edtPword.getText().toString(), new LogInCallback() {
+                {   /*
+                    ParseUser.logInInBackground(edtEmail.getText().toString(), edtPword.getText().toString(), new LogInCallback() {
                     @Override
                     public void done(ParseUser user, ParseException e) {
                         if(user!=null&&e==null){
@@ -64,8 +69,20 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                         else{
                             Toast.makeText(LoginActivity.this,user.getUsername()+" is not logged in",Toast.LENGTH_SHORT).show();
                         }
-                    }
-                });}
+                      }
+                    });
+                    */
+
+                    mAuth.signInWithEmailAndPassword(edtEmail.getText().toString(),edtEmail.getText().toString()).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<AuthResult> task) {
+                            if(task.isSuccessful()){
+                                Toast.makeText(LoginActivity.this,"logged in",Toast.LENGTH_SHORT).show();
+                                transitionToSocialMedia();
+                            }
+                        }
+                    });
+                }
                 break;
             case R.id.sulgn:
                 Intent i= new Intent(LoginActivity.this,SignUp.class);

@@ -1,5 +1,6 @@
 package com.example.instagramclone;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.ProgressDialog;
@@ -12,16 +13,19 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.parse.ParseException;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.FirebaseDatabase;
 import com.parse.ParseInstallation;
-import com.parse.ParseUser;
-import com.parse.SignUpCallback;
 
 public class SignUp extends AppCompatActivity implements View.OnClickListener {
     private EditText edtEmail;
     private EditText edtUsername;
     private EditText edtPassword;
     private Button btnSignUp,btnLogIn;
+    private FirebaseAuth mAuth;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -32,6 +36,7 @@ public class SignUp extends AppCompatActivity implements View.OnClickListener {
         edtPassword=findViewById(R.id.passwordup);
         btnSignUp=findViewById(R.id.signupbtn);
         btnLogIn=findViewById(R.id.loginbtn);
+        mAuth=FirebaseAuth.getInstance();
         edtPassword.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -43,10 +48,9 @@ public class SignUp extends AppCompatActivity implements View.OnClickListener {
         });
         btnSignUp.setOnClickListener(this);
         btnLogIn.setOnClickListener(this);
-        if(ParseUser.getCurrentUser()!=null){
+        if(mAuth.getCurrentUser()!=null){
             transitionToSocialMedia();
         }
-
     }
 
     @Override
@@ -57,6 +61,7 @@ public class SignUp extends AppCompatActivity implements View.OnClickListener {
                     Toast.makeText(SignUp.this,"Email, Username, Password are required",Toast.LENGTH_SHORT).show();
                 }
                 else{
+                    /*
                     final ParseUser appUser=new ParseUser();
                     appUser.setEmail(edtEmail.getText().toString());
                     appUser.setUsername(edtUsername.getText().toString());
@@ -73,6 +78,24 @@ public class SignUp extends AppCompatActivity implements View.OnClickListener {
                             }
                             else{
                                 Toast.makeText(SignUp.this,appUser.getUsername()+" is not signed up",Toast.LENGTH_SHORT).show();
+                            }
+                            pd.dismiss();
+                        }
+                    });
+                    */
+                    final ProgressDialog pd=new ProgressDialog(this);
+                    pd.setMessage("Signing Up"+edtUsername);
+                    pd.show();
+                    mAuth.createUserWithEmailAndPassword(edtEmail.getText().toString(),edtPassword.getText().toString()).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<AuthResult> task) {
+                            if(task.isSuccessful()){
+                                Toast.makeText(SignUp.this,edtUsername+" is signed up",Toast.LENGTH_SHORT).show();
+                                FirebaseDatabase.getInstance().getReference().child("users").child(task.getResult().getUser().getUid()).child("username").setValue(edtUsername.getText().toString());
+                                transitionToSocialMedia();
+                            }
+                            else{
+                                Toast.makeText(SignUp.this,edtUsername+" is not signed up",Toast.LENGTH_SHORT).show();
                             }
                             pd.dismiss();
                         }
